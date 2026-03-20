@@ -22,6 +22,8 @@ ls("package:dplyr")
 # 查看函数帮助
 ?dplyr::filter
 args(dplyr::filter)
+# 查看数据集
+data(package = "tidyverse")
 
 # =========================
 # Task 2A: 用 for 循环检查阈值
