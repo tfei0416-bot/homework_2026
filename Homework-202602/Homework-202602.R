@@ -12,9 +12,16 @@ available_pkgs <- rownames(available.packages())
 #2 安装包
 install.packages("tidyverse", repos = "https://cloud.r-project.org")
 #3 查看包
+# 加载 tidyverse
 library(tidyverse)
-packageVersion("tidyverse")
-help(package = "tidyverse")
+# 查看 tidyverse 包含哪些核心包
+tidyverse_packages()
+# 查看 dplyr 包中的函数
+library(dplyr)
+ls("package:dplyr")
+# 查看函数帮助
+?dplyr::filter
+args(dplyr::filter)
 
 # =========================
 # Task 2A: 用 for 循环检查阈值
