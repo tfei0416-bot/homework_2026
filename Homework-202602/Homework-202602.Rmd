@@ -9,7 +9,7 @@ output: word_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# R 作业示例：安装并查看 tidyverse；自定义函数检查阈值
+# R 作业：安装并查看 tidyverse；自定义函数检查阈值
 
 ## Task 1：查找、安装并查看 tidyverse
 
