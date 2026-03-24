@@ -5,17 +5,13 @@ date: "2026-03-20"
 output: word_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 # R 作业：安装并查看 tidyverse；自定义函数检查阈值
 
 ## Task 1：查找、安装并查看 tidyverse
 
 ### 1. 检查 CRAN 上是否有 `tidyverse`
 
-```{r}
+```{r eval=FALSE}
 # 检查 CRAN 上是否有 tidyverse
 available_pkgs <- rownames(available.packages())
 "tidyverse" %in% available_pkgs
@@ -30,7 +26,7 @@ install.packages("tidyverse", repos = "https://cloud.r-project.org")
 
 ### 3. 加载 `tidyverse`
 
-```{r}
+```{r eval=FALSE}
 # 加载 tidyverse
 library(tidyverse)
 ```
@@ -44,7 +40,7 @@ help(package = "tidyverse")
 
 ### 5. 查看 `tidyverse` 包含的核心包
 
-```{r}
+```{r eval=FALSE}
 # 查看 tidyverse 核心包
 tidyverse_packages()
 ```
@@ -53,21 +49,21 @@ tidyverse_packages()
 
 ### 1. 查看 `dplyr` 中的函数
 
-```{r}
+```{r eval=FALSE}
 library(dplyr)
 ls("package:dplyr")
 ```
 
 ### 2. 查看 `tidyr` 中的函数
 
-```{r}
+```{r eval=FALSE}
 library(tidyr)
 ls("package:tidyr")
 ```
 
 ### 3. 查看 `ggplot2` 中的函数
 
-```{r}
+```{r eval=FALSE}
 library(ggplot2)
 ls("package:ggplot2")
 ```
@@ -84,7 +80,7 @@ help(filter, package = "dplyr")
 
 ### 2. 查看函数参数
 
-```{r}
+```{r eval=FALSE}
 # 查看 filter 函数的参数
 args(dplyr::filter)
 ```
@@ -101,7 +97,7 @@ help(package = "ggplot2")
 
 ### 1. 查看 `tidyverse` 相关包中的数据集
 
-```{r}
+```{r eval=FALSE}
 data(package = "tidyverse")
 data(package = "dplyr")
 data(package = "ggplot2")
@@ -109,7 +105,7 @@ data(package = "ggplot2")
 
 ### 2. 查看 `ggplot2` 中的 `diamonds` 数据集
 
-```{r}
+```{r eval=FALSE}
 # 加载并查看 diamonds 数据集
 data("diamonds", package = "ggplot2")
 
@@ -130,7 +126,7 @@ help("diamonds", package = "ggplot2")
 
 ### 生成随机向量
 
-```{r}
+```{r eval=FALSE}
 set.seed(123)
 x <- rnorm(n = 10, mean = 35, sd = 10)
 
@@ -139,7 +135,7 @@ x
 
 ### 自定义函数：使用 `for` 循环判断是否高于阈值
 
-```{r}
+```{r eval=FALSE}
 check_above_threshold <- function(x, threshold = 35) {
   result <- logical(length(x))
 
@@ -153,13 +149,13 @@ check_above_threshold <- function(x, threshold = 35) {
 
 ### 运行函数并查看结果
 
-```{r}
+```{r eval=FALSE}
 check_above_threshold(x, threshold = 35)
 ```
 
 ### 将结果整理成数据框
 
-```{r}
+```{r eval=FALSE}
 result_df <- data.frame(
   value = x,
   above_35 = check_above_threshold(x, threshold = 35)
@@ -172,7 +168,7 @@ print(result_df)
 
 ### 自定义函数：使用 `sapply()` 判断是否高于阈值
 
-```{r}
+```{r eval=FALSE}
 check_above_threshold_apply <- function(x, threshold = 35) {
   sapply(x, function(value) value > threshold)
 }
@@ -180,13 +176,13 @@ check_above_threshold_apply <- function(x, threshold = 35) {
 
 ### 运行函数并查看结果
 
-```{r}
+```{r eval=FALSE}
 check_above_threshold_apply(x, threshold = 35)
 ```
 
 ### 将结果整理成数据框
 
-```{r}
+```{r eval=FALSE}
 result_df_apply <- data.frame(
   value = x,
   above_35 = check_above_threshold_apply(x, threshold = 35)
