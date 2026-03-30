@@ -1,0 +1,286 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Homework-03},
+  pdfauthor={Tingting Fei},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Homework-03}
+\author{Tingting Fei}
+\date{2026-03-30}
+
+\begin{document}
+\maketitle
+
+\subsubsection{问题1}\label{ux95eeux98981}
+
+针对 \texttt{ade4} 包内置的 \texttt{doubs} 数据集中的
+\texttt{env}，写一段代码，用管道
+\texttt{\textbar{}\textgreater{}}、\texttt{select()}、\texttt{filter()}、\texttt{rename()}、\texttt{arrange()}
+等操作：
+
+\begin{itemize}
+\tightlist
+\item
+  选取 \texttt{dfs}、\texttt{alt}、\texttt{oxy} 列
+\item
+  重命名 \texttt{dfs} 为 \texttt{distance}，\texttt{oxy} 为
+  \texttt{oxygen}
+\item
+  保留 \texttt{alt} 大于 200 米的行
+\item
+  按 \texttt{alt} 降序排列
+\item
+  新增一列 \texttt{oxygen\_category}，根据 \texttt{oxygen} 是否大于
+  90，分为 \texttt{High} 和 \texttt{Low}
+\item
+  计算每个类别的平均 \texttt{alt} 和平均 \texttt{pH}
+\end{itemize}
+
+\subsection{1.1
+加载数据与所需包}\label{ux52a0ux8f7dux6570ux636eux4e0eux6240ux9700ux5305}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ade4)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: package 'ade4' was built under R version 4.5.3
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(dplyr)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## Warning: package 'dplyr' was built under R version 4.5.3
+\end{verbatim}
+
+\begin{verbatim}
+## 
+## Attaching package: 'dplyr'
+\end{verbatim}
+
+\begin{verbatim}
+## The following objects are masked from 'package:stats':
+## 
+##     filter, lag
+\end{verbatim}
+
+\begin{verbatim}
+## The following objects are masked from 'package:base':
+## 
+##     intersect, setdiff, setequal, union
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{data}\NormalTok{(}\StringTok{"doubs"}\NormalTok{, }\AttributeTok{package =} \StringTok{"ade4"}\NormalTok{)}
+\NormalTok{env }\OtherTok{\textless{}{-}}\NormalTok{ doubs}\SpecialCharTok{$}\NormalTok{env}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{1.2
+数据整理与分组汇总}\label{ux6570ux636eux6574ux7406ux4e0eux5206ux7ec4ux6c47ux603b}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{data}\NormalTok{(}\StringTok{"doubs"}\NormalTok{, }\AttributeTok{package =} \StringTok{"ade4"}\NormalTok{)}
+\NormalTok{env }\OtherTok{\textless{}{-}}\NormalTok{ doubs}\SpecialCharTok{$}\NormalTok{env}
+
+\NormalTok{result }\OtherTok{\textless{}{-}}\NormalTok{ env }\SpecialCharTok{|\textgreater{}}
+  \CommentTok{\#从 \textasciigrave{}env\textasciigrave{} 数据中选取 \textasciigrave{}dfs\textasciigrave{}、\textasciigrave{}alt\textasciigrave{}、\textasciigrave{}oxy\textasciigrave{} 和 \textasciigrave{}pH\textasciigrave{} 四列}
+  \FunctionTok{select}\NormalTok{(dfs, alt, oxy, pH) }\SpecialCharTok{|\textgreater{}}
+  \CommentTok{\#重命名}
+  \FunctionTok{rename}\NormalTok{( }
+    \AttributeTok{distance =}\NormalTok{ dfs,}
+    \AttributeTok{oxygen =}\NormalTok{ oxy}
+\NormalTok{  ) }\SpecialCharTok{|\textgreater{}}
+  \CommentTok{\#筛选出海拔 \textasciigrave{}alt \textgreater{} 200\textasciigrave{} 的观测值}
+  \FunctionTok{filter}\NormalTok{(alt }\SpecialCharTok{\textgreater{}} \DecValTok{200}\NormalTok{) }\SpecialCharTok{|\textgreater{}} 
+  \CommentTok{\#按照 \textasciigrave{}alt\textasciigrave{} 从高到低排序}
+  \FunctionTok{arrange}\NormalTok{(}\FunctionTok{desc}\NormalTok{(alt)) }\SpecialCharTok{|\textgreater{}} 
+  \CommentTok{\#根据 \textasciigrave{}oxygen \textgreater{} 90\textasciigrave{} 与否，将样本分为 \textasciigrave{}High\textasciigrave{} 和 \textasciigrave{}Low\textasciigrave{}}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{oxygen\_category =} \FunctionTok{ifelse}\NormalTok{(oxygen }\SpecialCharTok{\textgreater{}} \DecValTok{90}\NormalTok{, }\StringTok{"High"}\NormalTok{, }\StringTok{"Low"}\NormalTok{) }
+\NormalTok{  ) }\SpecialCharTok{|\textgreater{}}
+  \CommentTok{\#按类别分别计算平均海拔和平均 pH}
+  \FunctionTok{group\_by}\NormalTok{(oxygen\_category) }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{summarise}\NormalTok{(}
+    \AttributeTok{mean\_alt =} \FunctionTok{mean}\NormalTok{(alt, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{),}
+    \AttributeTok{mean\_pH =} \FunctionTok{mean}\NormalTok{(pH, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{  ) }
+
+\NormalTok{result}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 2 x 3
+##   oxygen_category mean_alt mean_pH
+##   <chr>              <dbl>   <dbl>
+## 1 High                561.    80.6
+## 2 Low                 421.    80.1
+\end{verbatim}
+
+\subsubsection{问题2}\label{ux95eeux98982}
+
+根据 \texttt{doubs} 数据集中的 \texttt{env}，完成如下可视化： 1. 利用
+\texttt{ggplot2} 包，绘制 \texttt{x\ =\ alt} 与 \texttt{y\ =\ oxy}
+之间的散点图 2. 在上述散点图中，将 \texttt{dfs} 距离映射为颜色
+
+\subsection{2.1
+加载数据与所需包}\label{ux52a0ux8f7dux6570ux636eux4e0eux6240ux9700ux5305-1}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{2.2 绘制 alt 与 oxy
+的散点图}\label{ux7ed8ux5236-alt-ux4e0e-oxy-ux7684ux6563ux70b9ux56fe}
+
+题目填空如下： ggplot(data = env) + geom\_point(mapping = aes(x = alt, y
+= oxy))
+
+对应完整代码：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data =}\NormalTok{ env) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{mapping =} \FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ alt, }\AttributeTok{y =}\NormalTok{ oxy)) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Scatter Plot of Altitude and Oxygen"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Altitude (alt)"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Oxygen (oxy)"}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{2.3 将 dfs
+距离映射为颜色}\label{ux5c06-dfs-ux8dddux79bbux6620ux5c04ux4e3aux989cux8272}
+
+题目填空如下： ggplot(data = env) + geom\_point(mapping = aes(x = alt, y
+= oxy, color = dfs))
+
+对应完整代码：
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(}\AttributeTok{data =}\NormalTok{ env) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{mapping =} \FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ alt, }\AttributeTok{y =}\NormalTok{ oxy, }\AttributeTok{color =}\NormalTok{ dfs)) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Altitude and Oxygen with Distance as Color"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Altitude (alt)"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Oxygen (oxy)"}\NormalTok{,}
+    \AttributeTok{color =} \StringTok{"Distance (dfs)"}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+
+\end{document}
