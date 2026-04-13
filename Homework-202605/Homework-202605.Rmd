@@ -1,0 +1,110 @@
+---
+title: "Homework_202605"
+author: "Tingting Fei"
+date: "2026-04-12"
+output: word_document
+---
+
+# 问题 1
+## （1）基于 R 脚本获取网络数据的三种方式
+### 方法一：直接读取网络文件
+该方法适用于数据以 CSV、TXT 等格式直接存储在网络服务器上的情况。R 可以通过 URL 直接读取数据。
+```{r, eval=FALSE}
+data1 <- read.csv("https://example.com/data.csv")
+head(data1)
+```
+
+### 方法二：使用 HTTP 请求获取数据（API调用）
+当数据通过 API 提供时，可以使用 HTTP 请求访问服务器并获取数据内容。
+```{r, eval=FALSE}
+library(httr)
+res <- GET("https://api.example.com/data") #`GET()` 用于向服务器发送请求
+data2 <- content(res) #`content()` 用于提取返回的数据内容，通常为 JSON 或文本格式。
+```
+
+### 方法三：解析 JSON 格式数据
+许多数据接口以 JSON 格式返回数据，需要进行解析。
+```{r, eval=FALSE}
+library(jsonlite)
+data3 <- fromJSON("https://api.example.com/data") 
+```
+fromJSON()可将 JSON 格式数据转换为 R 中的数据框或列表结构，便于后续分析。
+JSON格式数据举例：
+列表：
+{
+  "cities": ["Beijing", "Shanghai", "Guangzhou"]
+}
+
+嵌套结构：
+{
+  "city": "Beijing",
+  "weather": {
+    "temp": 25,
+    "humidity": 60
+  }
+}
+
+特点：
+键值对结构(key : value)、支持嵌套、易于机器读取 跨语言通用（R / Python / Java 都能用）
+
+## （2）API 端点（API Endpoint）的定义
+API 端点是指服务器提供的一个具体 URL 地址，用于访问特定的数据资源或服务。
+每一个端点通常对应一种功能，例如数据查询、数据提交或数据更新。
+用户可以通过向该端点发送 HTTP 请求（如GET、POST等），获取或操作相应的数据资源。
+
+# 问题 2
+
+```{r, eval=FALSE}
+install.packages("dplyr")
+install.packages("dbplyr")
+install.packages("DBI")
+install.packages("RSQLite")
+```
+
+## 2.1 创建SQLite数据库
+注：
+mydb <- src_sqlite(dbname.sqlite, create = TRUE)
+在当前版本的 dplyr 中，src_sqlite() 已经先被弃用，后来又被设为 defunct；
+官方现在明确建议：先用 DBI::dbConnect()
+建立数据库连接，再直接对这个连接使用 tbl()
+
+```{r}
+library(DBI)
+library(RSQLite)
+con <- dbConnect(SQLite(), "dbname.sqlite")
+con
+```
+
+
+## 2.2 利用copy_to()将csv文件上传到SQLite
+```{r}
+library(dplyr)
+
+env <- read.csv("D:/Myclass/homework_2026/Homework-202605/env.csv")
+copy_to(con, env, "env", overwrite = TRUE, temporary = FALSE)
+```
+copy_to(dest, df, name=...) 的第一个参数是数据库连接对象，第二个参数是本地数据框，第三个参数通常写数据库里的表名。
+
+## 2.3 连接数据库，将数据库中数据集读入R
+### 2.3.1
+```{r}
+env <- dbReadTable(con, "env")
+head(env)
+```
+`dbReadTable()` 用于从数据库读取完整数据表；`head()` 用于快速查看数据结构。
+
+### 2.3.2 使用 dplyr 方式访问数据库
+若需要使用 dplyr 语法对数据库进行操作，可使用 `tbl()` 建立表引用。
+```{r}
+library(dplyr)
+env_tbl <- tbl(con, "env")
+env_tbl
+```
+tbl() 的第一个参数是 DBI::dbConnect()返回的连接对象，第二个参数是数据库中的表名；而且 tbl() 返回的是一个惰性数据库表对象，不会立刻把全部数据都读入 R。
+
+### 2.3.3 关闭数据库连接
+```{r}
+dbDisconnect(con)
+```
+在完成数据库操作后，应及时关闭连接，以释放系统资源。
+---
