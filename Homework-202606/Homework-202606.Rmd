@@ -1,0 +1,540 @@
+---
+title: "Homework-202606"
+author: "Tingting Fei"
+date: "2026-04-29"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+整体流程
+1. 导入 Doubs 数据集，并从 `fish`、`env`、`xy` 表中删除无鱼样点；
+2. 对鱼类群落数据进行 Hellinger 转换，计算样点间欧式距离，并进行 Q-mode 聚类分析；
+3. 对环境变量进行标准化和主成分分析（PCA），开展 R-mode 变量相关性分析；
+4. 分析鱼类群落与环境变量之间的关系，选择合适排序模型，并进行冗余分析（RDA）。
+
+```{r load-packages}
+library(ade4)
+library(vegan)
+```
+
+# 1）导入 Doubs 数据集，并删除无鱼站点
+
+Doubs 数据集包含三个主要数据表：`fish` 为鱼类群落数据，`env` 为环境变量数据，`xy` 为样点空间坐标数据。首先导入数据并查看其基本结构。
+
+```{r load-data}
+data(doubs)
+
+fish <- doubs$fish
+env  <- doubs$env
+xy   <- doubs$xy
+
+dim(fish)
+dim(env)
+dim(xy)
+
+head(fish)
+head(env)
+head(xy)
+```
+
+`fish` 表中每一行代表一个观察站点，每一列代表一种鱼类。为了识别无鱼站点，计算每个样点的鱼类总丰度。
+
+```{r fish-abundance}
+fish_abundance <- rowSums(fish)
+
+fish_abundance
+
+no_fish_site <- which(fish_abundance == 0)
+no_fish_site
+```
+
+结果显示，第 8 号样点没有鱼类记录。因此，从 `fish`、`env` 和 `xy` 三个表中同步删除第 8 号样点，形成清洗后的数据表。
+
+```{r clean-data}
+keep_site <- fish_abundance > 0
+
+fish_clean <- fish[keep_site, ]
+env_clean  <- env[keep_site, ]
+xy_clean   <- xy[keep_site, ]
+
+dim(fish_clean)
+dim(env_clean)
+dim(xy_clean)
+```
+
+将清洗后的数据整理为一个新的列表对象 `doubs_clean`。
+
+```{r doubs-clean}
+doubs_clean <- list(
+  fish = fish_clean,
+  env  = env_clean,
+  xy   = xy_clean
+)
+
+str(doubs_clean)
+```
+
+**结果说明：**
+
+通过计算各样点鱼类总丰度，发现第 8 号样点为无鱼样点。为保证鱼类群落数据、环境数据和空间坐标数据之间的一一对应关系，本文从 `fish`、`env` 和 `xy` 三个数据表中同步删除第 8 号样点，得到 `fish_clean`、`env_clean` 和 `xy_clean`，并进一步整理为 `doubs_clean` 数据对象。
+
+# 2）fish_clean 的 Hellinger 转换、欧式距离与 Q-mode 聚类分析
+
+Q-mode 分析关注的是样点之间的相似性。由于群落数据中常存在大量零值，且不同样点总丰度差异可能较大，因此在计算距离前，先对 `fish_clean` 进行 Hellinger 转换。
+
+```{r hellinger}
+spe_hel <- vegan::decostand(fish_clean, method = "hellinger")
+
+head(spe_hel)
+```
+
+随后计算 Hellinger 转换后样点之间的欧式距离。
+
+```{r euclidean-distance}
+spe_dist <- dist(spe_hel, method = "euclidean")
+
+spe_dist
+```
+
+采用 Ward 最小方差法进行层次聚类，并绘制聚类图。
+
+```{r q-mode-clustering}
+spe_clust_ward <- hclust(spe_dist, method = "ward.D2")
+
+plot(
+  spe_clust_ward,
+  main = "Q-mode clustering of fish communities",
+  xlab = "Sampling sites",
+  ylab = "Euclidean distance",
+  sub = "",
+  cex = 0.8
+)
+```
+
+**结果解释：**
+
+对 `fish_clean` 进行 Hellinger 转换后，计算样点间欧式距离，并采用 Ward 最小方差法进行层次聚类。聚类图中，横轴为采样点编号，纵轴为样点之间的欧式距离。距离越小，说明样点之间鱼类群落组成越相似；距离越大，说明鱼类群落组成差异越明显。
+
+从聚类结果看，Doubs 河流样点在鱼类群落组成上呈现明显分组特征。整体上，样点可大致分为两个主要类群：一类主要包括 20–30 号样点，另一类主要包括 1–19 号样点，说明不同河段之间的鱼类群落组成存在较明显差异。在较小距离处合并的样点，如 20–22、26–28、23–24、11–12、13–14、17–18、15–16 和 4–6，说明这些样点之间鱼类群落组成较为相似。整体来看，Q-mode 聚类结果反映了 Doubs 河流鱼类群落沿样点序列存在一定空间分异。
+
+# 3）env_clean 的 PCA 分析与 R-mode 变量相关性分析
+
+## 3① env_clean 标准化
+
+由于 `env_clean` 中不同环境变量的量纲和数值范围不同，因此在 PCA 前需要进行标准化处理，使每个变量均值为 0、标准差为 1。
+
+题目中的填空为：
+
+```r
+env_z <- vegan::decostand(env_clean, "standardize")
+```
+
+即：
+
+```text
+第一个空：vegan
+第二个空：standardize
+```
+
+完整代码如下：
+
+```{r standardize-env}
+env_z <- vegan::decostand(env_clean, "standardize")
+
+summary(env_z)
+```
+
+## 3② 比较 prcomp() 和 vegan::rda() 的 PCA 结果
+
+首先使用 R 自带 `stats` 包中的 `prcomp()` 函数进行 PCA。
+
+```{r pca-prcomp}
+pca_env_prcomp <- prcomp(env_z)
+
+summary(pca_env_prcomp)
+
+biplot(
+  pca_env_prcomp,
+  scale = 0,
+  main = "PCA biplot by prcomp()"
+)
+```
+
+题目中的填空为：
+
+```r
+biplot(pca_env_prcomp, scale = 0)
+```
+
+即：
+
+```text
+第一个空：scale
+第二个空：0
+```
+
+接着使用 `vegan::rda()` 对标准化后的环境变量进行 PCA。由于 `rda()` 在未设置解释变量时等价于 PCA，因此可以用于环境变量的主成分分析。
+
+```{r pca-rda}
+pca_env_rda <- vegan::rda(env_z)
+
+summary(pca_env_rda)
+
+biplot(
+  pca_env_rda,
+  scaling = 2,
+  main = "PCA biplot by vegan::rda()"
+)
+```
+
+题目中的填空为：
+
+```r
+pca_env_rda <- vegan::rda(env_z)
+biplot(pca_env_rda, scaling = 2)
+```
+
+即：
+
+```text
+第一个空：vegan
+第二个空：scaling
+第三个空：2
+```
+
+## 3③ PCA 双序图解释
+
+根据 `vegan::rda()` 的 PCA 结果，
+PC1 的特征值为 6.446，解释了 58.6% 的环境变量变异；
+PC2 的特征值为 2.2252，解释了20.23%的环境变量变异。
+前两个主成分累计解释率为78.83%，说明前两个主成分已经能够较好概括Doubs河流环境变量的主要变化梯度。
+
+从变量角度看，PCA 双序图中的红色箭头表示环境变量。
+箭头越长，说明该变量对前两个主成分的贡献越大；
+两个箭头夹角越小，说明变量之间正相关越强；
+箭头方向相反，说明变量之间可能存在负相关；
+箭头接近垂直，说明相关性较弱。
+
+图中 `dfs`、`flo` 和 `har`箭头方向接近，并主要指向PC1正方向，说明这几个变量之间具有较强正相关关系，可能共同反映河流下游方向上的距源距离、流量和水体硬度梯度。
+`alt` 和 `slo` 箭头方向接近，并指向 PC1 负方向，说明海拔和坡度之间正相关；同时它们与`dfs`、`flo` 方向大致相反，说明上游高海拔、高坡度特征与下游高距源距离、高流量特征之间存在明显负相关关系。
+
+从 PC2 方向看，`oxy` 和 `pH` 位于 PC2 正方向，而 `amm`、`pho` 和 `bdo` 位于 PC2 负方向。其中 `oxy` 与 `amm`、`pho`、`bdo`的方向大致相反，说明溶解氧可能与氨氮、磷酸盐和生化需氧量等营养盐或有机污染指标呈负相关关系。
+
+从样点角度看，1–10 号样点多分布在PC1负方向，并接近`alt`和`slo`箭头方向，说明这些样点更具有上游河段特征；20–30 号样点多分布在PC1正方向，接近`dfs`、`flo`和`har`方向，说明这些样点更具有下游河段特征。
+样点 23 和 25 位于 PC2 负方向，并接近`amm`、`pho`和`bdo`，说明这些样点可能受营养盐或有机污染梯度影响较明显。
+整体来看，PCA 双序图揭示了 Doubs 河流环境变量沿纵向河流梯度和水质梯度的综合变化。
+
+# 4）fish 与 env 之间关系的 RDA 分析
+
+RDA 用于分析群落组成与环境变量之间的线性关系。在进行 RDA 或 CCA 前，需要先判断群落数据更适合线性排序模型还是单峰排序模型。
+
+## 4① DCA 判断排序模型
+
+通过 DCA 查看第一轴梯度长度。
+
+```{r dca}
+dca_fish <- vegan::decorana(spe_hel)
+
+dca_fish
+```
+
+题目中的填空为：
+
+```text
+当 DCA1 < 3，选择用 RDA；
+当 DCA1 > 4，选择 CCA。
+```
+
+如果 DCA1 位于 3–4 之间，则 RDA 和 CCA 均可尝试，并结合研究目的和结果解释进行选择。
+
+本研究中 DCA 结果如下：
+```text
+Axis lengths:
+DCA1 = 3.8978
+DCA2 = 2.5320
+DCA3 = 1.81542
+DCA4 = 1.08788
+```
+DCA1 轴长为 3.8978，处于 3–4 的过渡范围，接近 4。该结果说明鱼类群落沿环境梯度可能具有一定单峰响应特征，但仍处于 RDA 与 CCA 均可尝试的范围。考虑到本研究已经对鱼类群落数据进行了 Hellinger 转换，且题目要求进行 `spe_hel` 与 `env_z` 的 RDA 分析，因此本文继续采用 RDA 分析鱼类群落与环境变量之间的关系。
+
+## 4② RDA 环境变量选择
+
+题目中的填空为：
+
+```text
+如果进行 spe_hel 的 RDA 分析，通过手动删除 env_z 中 VIF 较高或共线性较强的变量，
+或者通过 vegan 包中 ordiR2step() 函数最大化 adjusted R²，
+最终达到选择变量的目的。
+```
+
+因此，两个空分别为：
+
+```text
+VIF 较高或共线性较强的变量
+adjusted R²
+```
+
+本文采用两种思路说明环境变量选择：第一种是根据 VIF 手动删除共线性较强的变量；第二种是通过 `vegan::ordiR2step()` 最大化 adjusted R² 进行逐步选择。由于题目强调可以通过这两种方式达到变量选择目的，本文先展示手动 VIF 筛选过程，并补充给出 `ordiR2step()` 的代码。
+
+### 4②-1 基于 VIF 的手动变量筛选
+
+建立包含所有环境变量的 RDA 全模型：
+
+```{r rda-full-vif}
+rda_full <- vegan::rda(
+  spe_hel ~ .,
+  data = as.data.frame(env_z)
+)
+
+vif.cca(rda_full)
+```
+
+初始 VIF 结果显示，多个变量存在明显共线性，其中 `dfs` 的 VIF 最高。因此，首先删除 `dfs`，重新建立模型并检查 VIF。
+
+```{r remove-dfs}
+env_z_vif1 <- env_z[, !colnames(env_z) %in% c("dfs")]
+
+rda_vif1 <- vegan::rda(
+  spe_hel ~ .,
+  data = as.data.frame(env_z_vif1)
+)
+
+vif.cca(rda_vif1)
+```
+
+删除 `dfs` 后，`amm` 的 VIF 仍然最高，因此继续删除 `amm`。
+
+```{r remove-amm}
+env_z_vif2 <- env_z_vif1[, !colnames(env_z_vif1) %in% c("amm")]
+
+rda_vif2 <- vegan::rda(
+  spe_hel ~ .,
+  data = as.data.frame(env_z_vif2)
+)
+
+vif.cca(rda_vif2)
+```
+
+删除 `dfs` 和 `amm` 后，`pho` 的 VIF 最高，因此继续删除 `pho`。
+
+```{r remove-pho}
+env_z_selected <- env_z_vif2[, !colnames(env_z_vif2) %in% c("pho")]
+
+rda_selected <- vegan::rda(
+  spe_hel ~ .,
+  data = as.data.frame(env_z_selected)
+)
+
+vif_selected <- vif.cca(rda_selected)
+
+vif_selected
+```
+
+最终 VIF 结果为：
+
+```text
+alt = 9.697541
+slo = 3.889173
+flo = 4.704383
+pH  = 1.411207
+har = 2.922529
+nit = 4.643824
+oxy = 5.454992
+bdo = 4.417266
+```
+
+所有变量的 VIF 均小于 10，说明多重共线性已降至可接受范围。因此，最终删除 `dfs`、`amm` 和 `pho`，保留 `alt`、`slo`、`flo`、`pH`、`har`、`nit`、`oxy` 和 `bdo` 进入后续 RDA 分析。
+
+### 4②-2 基于 ordiR2step() 的逐步变量选择
+
+如果采用 `ordiR2step()`，可从空模型出发，在全模型变量范围内进行前向选择，并以 adjusted R² 作为约束，避免模型过度拟合。
+
+```{r ordiR2step-selection}
+rda_null <- vegan::rda(
+  spe_hel ~ 1,
+  data = as.data.frame(env_z)
+)
+
+rda_full <- vegan::rda(
+  spe_hel ~ .,
+  data = as.data.frame(env_z)
+)
+
+set.seed(123)
+
+rda_step <- vegan::ordiR2step(
+  rda_null,
+  scope = formula(rda_full),
+  direction = "forward",
+  R2scope = TRUE,
+  pstep = 1000,
+  trace = TRUE
+)
+
+rda_step
+summary(rda_step)
+vif.cca(rda_step)
+```
+
+该方法通过逐步加入变量，筛选出对鱼类群落组成解释力较强的环境变量。`ordiR2step()` 以 adjusted R² 作为上限或约束，有助于避免纳入过多变量导致过度拟合。
+
+## 4③ 建立最终 RDA 模型
+
+本文以手动 VIF 筛选后的变量组合作为最终 RDA 模型，即删除 `dfs`、`amm` 和 `pho` 后保留的变量。
+
+```{r final-rda}
+rda_selected <- vegan::rda(
+  spe_hel ~ .,
+  data = as.data.frame(env_z_selected)
+)
+
+summary(rda_selected)
+```
+
+## 4④ RDA 模型显著性检验
+
+对最终 RDA 模型进行整体显著性检验。
+
+```{r rda-overall-test}
+set.seed(123)
+
+anova(
+  rda_selected,
+  permutations = 999
+)
+```
+
+对 RDA 排序轴进行显著性检验。
+
+```{r rda-axis-test}
+set.seed(123)
+
+anova(
+  rda_selected,
+  by = "axis",
+  permutations = 999
+)
+```
+
+对各环境变量进行显著性检验。
+
+```{r rda-term-test}
+set.seed(123)
+
+anova(
+  rda_selected,
+  by = "term",
+  permutations = 999
+)
+```
+对最终 RDA 模型中的环境变量进行逐项置换检验，结果显示，不同环境变量对鱼类群落组成的解释作用存在差异。其中，alt 对群落组成的解释作用最强，且达到极显著水平（F = 21.5201, p = 0.001），说明海拔梯度是影响 Doubs 河流鱼类群落分布的重要环境因子。水质相关变量中，nit（F = 3.7287, p = 0.006）、oxy（F = 5.8420, p = 0.002）和 bdo（F = 4.6441, p = 0.007）均达到显著水平，表明硝酸盐、溶解氧和生化需氧量等水质因子也对鱼类群落组成具有重要影响。har 的显著性水平为 p = 0.050，处于显著边界，说明水体硬度可能也具有一定解释作用。相比之下，slo、flo 和 pH 的 p 值分别为 0.058、0.059 和 0.063，接近显著但未达到 0.05 水平，说明其解释作用相对较弱或不稳定。总体来看，Doubs 鱼类群落组成主要受海拔梯度和水质梯度共同影响。
+
+## 4⑤ 绘制最终 RDA 排序图
+
+```{r rda-plot}
+plot(
+  rda_selected,
+  type = "n",
+  scaling = 2,
+  main = "RDA biplot of fish communities and environmental variables"
+)
+
+# 添加样点
+points(
+  rda_selected,
+  display = "sites",
+  scaling = 2,
+  pch = 21,
+  bg = "grey80",
+  col = "black"
+)
+
+# 添加样点编号
+text(
+  rda_selected,
+  display = "sites",
+  scaling = 2,
+  labels = rownames(spe_hel),
+  pos = 3,
+  cex = 0.7,
+  col = "black"
+)
+
+# 提取环境变量箭头坐标
+env_scores <- scores(
+  rda_selected,
+  display = "bp",
+  scaling = 2
+)
+
+# 添加环境变量箭头
+arrows(
+  0, 0,
+  env_scores[, 1],
+  env_scores[, 2],
+  length = 0.08,
+  col = "red"
+)
+
+# 添加环境变量名称
+text(
+  env_scores[, 1],
+  env_scores[, 2],
+  labels = rownames(env_scores),
+  col = "red",
+  cex = 0.9,
+  pos = 4
+)
+```
+RDA 排序图显示，Doubs 河流样点沿主要环境梯度发生分化。alt 和 slo 箭头方向相近，均指向 RDA1 正方向，说明海拔和坡度对群落组成的解释方向相似；flo、har 和 nit 主要指向 RDA1 负方向，与 alt、slo 方向相反，说明流量、水体硬度和硝酸盐梯度与海拔、坡度梯度存在相反的解释方向。oxy 主要指向 RDA2 正方向，而 bdo 指向 RDA2 负方向，说明溶解氧和生化需氧量在解释鱼类群落变化时呈现相反的环境梯度。
+
+从样点分布看，1–4、11–16 等样点多位于 RDA1 正方向，接近 alt、slo 或 oxy 方向，表现出较强的上游或高溶解氧环境特征；23、24、25 号样点靠近 bdo 方向，说明这些样点可能与较高生化需氧量条件相关；26–30 号样点位于 RDA1 负方向，并接近 flo、har 和 nit 方向，说明这些样点可能受流量、水体硬度和硝酸盐梯度影响较明显。结合逐项置换检验结果，alt、har、nit、oxy 和 bdo 对鱼类群落组成具有显著解释作用，表明 Doubs 鱼类群落主要受河流纵向梯度和水质梯度共同影响。
+
+## 4⑥ RDA 结果解释
+
+本作业基于 Hellinger 转换后的鱼类群落数据 `spe_hel` 和标准化后的环境变量 `env_z` 进行 RDA 分析。DCA 结果显示第一轴长度为 3.8978，处于 3–4 的过渡范围，说明 RDA 和 CCA 均可尝试。考虑到本文使用的是 Hellinger 转换后的群落数据，并重点分析群落组成与环境变量之间的线性关系，因此最终采用 RDA 方法。
+
+在环境变量筛选方面，全模型中多个变量存在较高 VIF，说明环境变量之间存在明显共线性。通过逐步删除 VIF 最高的变量，最终删除 `dfs`、`amm` 和 `pho`，保留 `alt`、`slo`、`flo`、`pH`、`har`、`nit`、`oxy` 和 `bdo`。筛选后所有变量的 VIF 均小于 10，说明多重共线性已降至可接受范围。
+
+逐项置换检验结果显示，不同环境变量对鱼类群落组成的解释作用存在差异。其中，`alt` 对群落组成的解释作用最强，并达到极显著水平（F = 21.5201, p = 0.001），说明海拔梯度是影响 Doubs 河流鱼类群落分布的重要环境因子。水质相关变量中，`nit`（F = 3.7287, p = 0.006）、`oxy`（F = 5.8420, p = 0.002）和 `bdo`（F = 4.6441, p = 0.007）均达到显著水平，表明硝酸盐、溶解氧和生化需氧量等水质因子也对鱼类群落组成具有重要影响。`har` 的显著性水平为 p = 0.050，处于显著边界，说明水体硬度可能也具有一定解释作用。相比之下，`slo`、`flo` 和 `pH` 的 p 值分别为 0.058、0.059 和 0.063，接近显著但未达到 0.05 水平，说明其解释作用相对较弱或不稳定。
+
+RDA 排序图进一步显示，样点沿主要环境梯度发生分化。`alt` 和 `slo` 箭头方向相近，均指向 RDA1 正方向，说明海拔和坡度对群落组成的解释方向相似；`flo`、`har` 和 `nit` 主要指向 RDA1 负方向，与 `alt`、`slo` 方向相反，说明流量、水体硬度和硝酸盐梯度与海拔、坡度梯度存在相反的解释方向。`oxy` 主要指向 RDA2 正方向，而 `bdo` 指向 RDA2 负方向，说明溶解氧和生化需氧量在解释鱼类群落变化时呈现相反的环境梯度。
+
+从样点分布看，1–4、11–16 等样点多位于 RDA1 正方向，接近 `alt`、`slo` 或 `oxy` 方向，表现出较强的上游或高溶解氧环境特征；23、24、25 号样点靠近 `bdo` 方向，说明这些样点可能与较高生化需氧量条件相关；26–30 号样点位于 RDA1 负方向，并接近 `flo`、`har` 和 `nit` 方向，说明这些样点可能受流量、水体硬度和硝酸盐梯度影响较明显。总体而言，Doubs 鱼类群落组成主要受河流纵向环境梯度和水质梯度共同影响，其中海拔、溶解氧、硝酸盐、生化需氧量和水体硬度是较重要的解释因子。
+
+
+# 作业关键填空答案汇总
+
+## 3①
+
+```r
+env_z <- vegan::decostand(env_clean, "standardize")
+```
+
+## 3②
+
+```r
+pca_env_prcomp <- prcomp(env_z) 
+biplot(pca_env_prcomp, scale = 0)
+
+pca_env_rda <- vegan::rda(env_z)
+biplot(pca_env_rda, scaling = 2)
+```
+
+## 4①
+
+```text
+当 DCA1 < 3，选择用 RDA；
+当 DCA1 > 4，选择 CCA。
+```
+
+## 4②
+
+```text
+VIF 较高或共线性较强的变量；
+adjusted R²。
+```
