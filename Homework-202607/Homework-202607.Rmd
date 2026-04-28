@@ -1,0 +1,367 @@
+---
+title: "Homework-202607"
+author: "Tingting Fei"
+date: "2026-04-28"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load-packages}
+library(ade4)
+library(sf)
+library(terra)
+library(ggplot2)
+library(dplyr)
+library(readr)
+```
+
+# 1. 利用 QGIS 获取 Doubs 样点地理坐标系
+
+Doubs 数据集中的 `xy` 坐标单位为米，但原始数据没有明确的坐标参考系统（CRS）。因此，这些坐标不能直接作为经纬度使用，也不能直接定义为 `EPSG:4326`。本题的核心是：先在 QGIS 中将原始样点作为本地坐标加载，再通过与真实 Doubs 河流位置进行匹配，获得样点的真实地理坐标。
+
+## 1.1 导出 Doubs 原始样点坐标
+
+首先在 R 中读取 Doubs 数据集，并将原始样点坐标导出为 CSV 文件，方便在 QGIS 中加载。
+
+```{r export-doubs-xy}
+data(doubs)
+
+fish <- doubs$fish
+env  <- doubs$env
+xy   <- doubs$xy
+
+xy$site_id <- 1:nrow(xy)
+
+xy_export <- xy |>
+  select(site_id, x, y)
+
+head(xy_export)
+
+write.csv(
+  xy_export,
+  "D:/Myclass/homework_2026/Homework-202607/doubs_xy.csv",
+  row.names = FALSE
+)
+```
+
+## 1.2 QGIS 中的具体操作过程
+
+在 QGIS 中获取 Doubs 样点地理坐标的具体步骤如下：
+
+1. 打开 QGIS，选择“图层 → 添加图层 → 添加分隔文本图层”，导入 `doubs_xy.csv`。
+2. 在导入窗口中，将 `x` 设置为 X 字段，将 `y` 设置为 Y 字段。
+3. 由于原始 `xy` 坐标没有真实 CRS，不能直接选择 `EPSG:4326`。如果 QGIS 强制要求选择 CRS，可临时选择 `EPSG:3857`，该设置仅用于显示点的相对分布，不代表其真实地理位置。
+4. 加载 OpenStreetMap 底图，或使用 QuickOSM 下载真实 Doubs 河流矢量数据。
+5. 根据 Doubs 样点沿河流的排列顺序，将原始样点位置与真实 Doubs 河流位置进行匹配。
+6. 通过 QGIS 的地理配准、矢量变换或人工匹配方式，将样点转换到真实地理空间中。
+7. 最终将配准后的样点图层设置为 `EPSG:4326 - WGS 84`，并在属性表中导出每个样点的经纬度坐标。
+8. 导出的地理坐标表保存为 `pointcoord_geo.csv`，其中 `xcoord` 表示经度，`ycoord` 表示纬度。
+
+## 1.3 读取 QGIS 导出的样点地理坐标
+
+下面读取 QGIS 配准后导出的样点地理坐标表。该表包含 30 个样点，字段包括 `id`、`xcoord` 和 `ycoord`。
+
+```{r read-pointcoord-geo}
+pointcoord_geo <- read.csv(
+  "D:/Myclass/homework_2026/Homework-202607/pointcoord_geo.csv"
+)
+
+head(pointcoord_geo)
+str(pointcoord_geo)
+```
+
+其中，`id` 表示样点编号，`xcoord` 表示经度，`ycoord` 表示纬度。
+
+## 1.4 将地理坐标转换为 sf 点图层
+
+将经纬度坐标表转换为 `sf` 点图层，并指定坐标系为 `EPSG:4326 - WGS 84`。
+
+```{r create-doubs-points-sf}
+doubs_pts <- st_as_sf(
+  pointcoord_geo,
+  coords = c("xcoord", "ycoord"),
+  crs = 4326
+)
+
+doubs_pts
+
+st_crs(doubs_pts)
+```
+
+## 1.5 合并原始本地坐标和地理坐标
+
+为了在作业中同时展示原始本地坐标和配准后的地理坐标，可以将 Doubs 原始 `xy` 坐标与 QGIS 导出的经纬度坐标进行合并。
+
+```{r combine-local-geo-coordinates}
+xy_table <- xy |>
+  rename(
+    id = site_id,
+    x_local = x,
+    y_local = y
+  )
+
+geo_table <- pointcoord_geo |>
+  rename(
+    longitude = xcoord,
+    latitude  = ycoord
+  )
+
+doubs_coord_compare <- left_join(
+  xy_table,
+  geo_table,
+  by = "id"
+)
+
+head(doubs_coord_compare)
+
+write.csv(
+  doubs_coord_compare,
+  "D:/Myclass/homework_2026/Homework-202607/doubs_local_and_geo_coordinates.csv",
+  row.names = FALSE
+)
+```
+
+## 1.6 输出对应点的地理坐标
+
+```{r output-geographic-coordinates}
+doubs_coord_compare |>
+  select(id, x_local, y_local, longitude, latitude)
+```
+
+## 1.7 绘制配准后的样点
+
+```{r plot-georeferenced-points}
+plot(
+  st_geometry(doubs_pts),
+  pch = 21,
+  bg = "red",
+  col = "black",
+  main = "Georeferenced Doubs Sampling Sites"
+)
+
+text(
+  st_coordinates(doubs_pts),
+  labels = pointcoord_geo$id,
+  pos = 3,
+  cex = 0.7
+)
+```
+
+## 1.8 结果说明
+
+Doubs 原始 `xy` 坐标为本地相对坐标，虽然单位为米，但没有真实坐标参考系统，因此不能直接作为地理坐标使用。本文首先将原始 `xy` 坐标导出为 CSV，并在 QGIS 中以临时坐标方式加载。随后结合 OpenStreetMap 底图和真实 Doubs 河流位置，通过地理配准方式将样点位置转换到真实地理空间。最终导出的 `pointcoord_geo.csv` 包含每个样点的经度和纬度，其中 `xcoord` 为经度，`ycoord` 为纬度。将该表在 R 中转换为 `sf` 点图层并指定 `EPSG:4326` 后，可用于后续空间制图和分析。
+
+# 2. 利用 ggplot2 在 DEM 上绘制 Doubs 河流和样点
+
+本题要求在 Doubs 河流区域数字高程图（DEM）上绘制 Doubs 河流以及样点。DEM 是栅格数据，Doubs 河流和样点是矢量数据。绘图前需要保证 DEM、河流和样点具有一致的坐标参考系统。
+
+## 2.1 读取空间数据
+
+下面代码中的文件路径需要根据自己的实际数据位置修改。
+
+```{r read-spatial-data, eval=FALSE}
+# 读取 DEM
+doubs_dem <- terra::rast(
+  "D:/Myclass/homework_2026/Homework-202607/doubs_dem.tif"
+)
+
+# 读取 Doubs 河流
+doubs_river <- sf::st_read(
+  "D:/Myclass/homework_2026/Homework-202607/doubs_river.shp"
+)
+
+# 样点直接使用第 1 题生成的 doubs_pts
+# 如果已经保存为文件，也可以重新读取：
+# doubs_pts <- sf::st_read("D:/Myclass/homework_2026/Homework-202607/doubs_pts_wgs84.shp")
+```
+
+保存第 1 题生成的样点图层，可运行：
+
+```{r save-doubs-points, eval=FALSE}
+st_write(
+  doubs_pts,
+  "D:/Myclass/homework_2026/Homework-202607/doubs_pts_wgs84.shp",
+  delete_layer = TRUE
+)
+```
+
+## 2.2 题目填空
+
+题目给出的代码为：
+
+```r
+dem_df <- as.data.frame(doubs_dem, xy = TRUE, na.rm = TRUE)
+st_crs(doubs_dem) <- ___(___) <- ____(____)
+ggplot() +
+       geom_raster(data = dem_df, aes(_____, ______, fill = ______)) +
+       geom_sf(data = doubs_pts, aes(______ = _______), color = "red") +
+       geom_sf(data = doubs_river, aes(_______ = ______), color = "yellow") +
+       theme_minimal()
+```
+
+对应填空为：
+
+```r
+dem_df <- as.data.frame(doubs_dem, xy = TRUE, na.rm = TRUE)
+
+st_crs(doubs_dem) <- st_crs(doubs_pts) <- st_crs(doubs_river)
+
+ggplot() +
+  geom_raster(data = dem_df, aes(x, y, fill = elevation)) +
+  geom_sf(data = doubs_pts, aes(geometry = geometry), color = "red") +
+  geom_sf(data = doubs_river, aes(geometry = geometry), color = "yellow") +
+  theme_minimal()
+```
+
+其中：
+
+- `x`、`y` 是 DEM 转换为数据框后的栅格坐标；
+- `elevation` 是 DEM 的高程值；
+- `geometry = geometry` 表示使用 `sf` 图层中的几何列；
+- 红色点表示样点；
+- 黄色线表示 Doubs 河流。
+
+## 2.3 完整绘图代码
+
+由于 DEM 转换成数据框后，高程字段名称可能不是 `elevation`，因此建议先统一修改 DEM 数据框的第三列名称。
+
+```{r plot-dem-river-points, eval=FALSE}
+dem_df <- as.data.frame(doubs_dem, xy = TRUE, na.rm = TRUE)
+
+# 将 DEM 数值列统一命名为 elevation
+names(dem_df)[3] <- "elevation"
+
+# 给 DEM 设置 CRS，SpatRaster 要用 terra::crs()
+terra::crs(doubs_dem) <- "EPSG:4326"
+
+# 给 sf 图层设置或转换 CRS
+st_crs(doubs_pts) <- 4326
+doubs_river <- st_transform(doubs_river, 4326)
+
+ggplot() +
+  geom_raster(
+    data = dem_df,
+    aes(x, y, fill = elevation)
+  ) +
+  geom_sf(
+    data = doubs_pts,
+    color = "red",
+    size = 2
+  ) +
+  geom_sf(
+    data = doubs_river,
+    color = "yellow",
+    linewidth = 0.8
+  ) +
+  scale_fill_viridis_c(name = "Elevation") +
+  theme_minimal() +
+  labs(
+    title = "Doubs River and Sampling Sites on DEM",
+    x = "Longitude / X",
+    y = "Latitude / Y"
+  )
+```
+
+## 2.4 结果说明
+
+该图以 DEM 表示 Doubs 河流区域的地形背景，并叠加 Doubs 河流和采样点。红色点表示采样点，黄色线表示 Doubs 河流。通过该图可以直观观察采样点与河流及地形背景之间的空间关系，也可以为后续空间自相关分析和空间预测建模提供基础空间数据。
+
+# 3. 空间自相关、空间邻近与空间滞后
+
+空间自相关用于判断空间样点属性值是否随空间邻近关系呈现相似性。如果相邻样点的属性值相似，则表现为正空间自相关；如果相邻样点属性值差异明显，则可能表现为负空间自相关或空间离散特征。
+
+## 3.1 Rook 邻近和 Queen 邻近的空间权重
+
+设蓝色中心格网单元为目标单元。Rook 邻近只包括与中心单元共享边界的邻居，即上、下、左、右四个单元。Queen 邻近包括与中心单元共享边界或顶点的邻居，即中心周围八个单元。
+
+如果采用二元空间权重：
+
+- Rook 邻近中，上、下、左、右四个邻居权重为 1，其他位置为 0；
+- Queen 邻近中，周围八个邻居权重为 1，中心单元自身权重为 0。
+
+如果采用行标准化空间权重，则所有邻居权重之和为 1。因此：
+
+- Rook 邻近有 4 个邻居，每个邻居权重为 `1/4`；
+- Queen 邻近有 8 个邻居，每个邻居权重为 `1/8`；
+- 中心样点自身不作为自己的邻居，因此中心位置权重为 `0`。
+
+### Rook 邻近的行标准化空间权重
+
+| 位置 | 左上 | 上 | 右上 |
+|---|---:|---:|---:|
+| 第一行 | 0 | 1/4 | 0 |
+| 第二行 | 1/4 | 0 | 1/4 |
+| 第三行 | 0 | 1/4 | 0 |
+
+### Queen 邻近的行标准化空间权重
+
+| 位置 | 左上 | 上 | 右上 |
+|---|---:|---:|---:|
+| 第一行 | 1/8 | 1/8 | 1/8 |
+| 第二行 | 1/8 | 0 | 1/8 |
+| 第三行 | 1/8 | 1/8 | 1/8 |
+
+因此，Rook 邻近强调共享边界的空间邻接关系，而 Queen 邻近同时考虑边界相邻和角点相邻。与 Rook 邻近相比，Queen 邻近的邻居数量更多，空间影响范围也更广。
+
+## 3.2 Moran's scatter plot 和 Lagged mean plot
+
+空间滞后值（spatial lag）可以理解为某一样点邻居属性值的加权平均。也就是说，一个样点的空间滞后值不是它自己的值，而是它周围邻居值按照空间权重计算后的平均结果。
+
+例如，若某样点有 4 个 Rook 邻居，并采用行标准化权重，则该样点的空间滞后值可以理解为：
+
+空间滞后值 = 上方邻居值 × 1/4
+          + 下方邻居值 × 1/4
+          + 左侧邻居值 × 1/4
+          + 右侧邻居值 × 1/4
+          
+# 4. 缓冲距离 buffer distance 的含义
+
+如果样点属性值存在空间自相关，可以创建预测网格，并计算每个预测网格到已知样点的缓冲距离，将其作为机器学习模型的输入特征。
+
+缓冲距离可以理解为预测位置与已知样点之间的空间接近程度。一般做法是：以已知样点为中心建立一定半径的缓冲区，或直接计算预测网格到样点的距离。距离越近，说明预测网格位置越可能受到该样点属性值的影响；距离越远，说明该样点对预测位置的影响可能越弱。
+
+在机器学习建模中，缓冲距离可以将空间邻近关系转化为数值特征，使模型能够利用空间结构信息。例如，对于每个预测网格，可以计算其到最近样点的距离，或计算一定缓冲半径内样点的数量、均值、最大值和最小值等。这些变量可以作为模型输入，用于提高空间预测能力。
+
+常见的缓冲距离特征包括：
+
+1. 到最近样点的距离；
+2. 到某一类样点的距离；
+3. 一定缓冲半径内的样点数量；
+4. 一定缓冲半径内样点属性值的均值、最大值或最小值；
+5. 多个不同半径下的距离或邻域统计量。
+
+因此，缓冲距离并不是单纯的几何距离，而是将“位置之间远近关系”转化为可用于预测建模的空间特征。它可以帮助机器学习模型捕捉空间自相关和邻近效应，从而改进对未知网格属性值的预测。
+
+## 4.1 计算预测网格到样点的最近距离示例
+
+下面代码演示如何用 `sf` 计算预测网格到最近样点的距离。该部分可作为缓冲距离特征构建的示例。
+
+```{r buffer-distance-example, eval=FALSE}
+# 以样点外包矩形作为简单研究区
+study_area <- st_as_sfc(st_bbox(doubs_pts)) |>
+  st_as_sf()
+
+# 创建规则预测网格点
+pred_grid <- st_make_grid(
+  study_area,
+  cellsize = 0.01,
+  what = "centers"
+) |>
+  st_as_sf()
+
+# 保持 CRS 一致
+st_crs(pred_grid) <- st_crs(doubs_pts)
+
+# 计算每个预测网格点到所有样点的距离矩阵
+dist_mat <- st_distance(pred_grid, doubs_pts)
+
+# 提取到最近样点的距离
+pred_grid$dist_nearest_site <- apply(dist_mat, 1, min)
+
+head(pred_grid)
+```
+
