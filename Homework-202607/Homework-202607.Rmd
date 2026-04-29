@@ -1,0 +1,114 @@
+---
+title: "Homework-202607"
+author: "Tingting Fei"
+date: "2026-04-29"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# 1.对于Doubs数据集，采样点的坐标单位为米，但没有坐标系信息，只有利用QGIS通过地理配准方法确定。请简述利用QGIS获取地理坐标系的过程，并给出对应点的地理坐标。
+
+
+# 2.利用ggplot2包，在doubs河流区域数字高程图（DEM）绘制doubs河流以及样点，请完成下列填空。
+
+本题要求利用 `ggplot2` 包，在 Doubs 河流区域数字高程图（DEM）上绘制 Doubs 河流以及样点。由于 `doubs_dem` 是 `terra` 包读取的 `SpatRaster` 对象，而 `doubs_river` 和 `doubs_pts` 是 `sf` 对象，因此二者设置坐标系的方法不同：
+
+- DEM 栅格数据使用 `terra::crs()` 设置坐标系；
+- 河流和样点矢量数据使用 `st_crs()` 设置坐标系；
+- 绘图前需要将 DEM 转换为数据框，并将第三列高程值统一命名为 `elevation`。
+
+填空：
+dem_df <- as.data.frame(doubs_dem, xy = TRUE, na.rm = TRUE)
+
+st_crs(doubs_dem) <- st_crs(doubs_pts) <- st_crs(doubs_river)
+
+ggplot() +
+  geom_raster(data = dem_df, aes(x = x, y = y, fill = elevation)) +
+  geom_sf(data = doubs_pts, aes(geometry = geometry), color = "red") +
+  geom_sf(data = doubs_river, aes(geometry = geometry), color = "yellow") +
+  theme_minimal()
+  
+```{r load-packages, message=FALSE, warning=FALSE}
+# 加载包
+library(ggplot2)
+library(sf)
+library(terra)
+```
+
+```{r read-data, message=FALSE, warning=FALSE}
+# 读取数据
+doubs_river <- st_read("D:/Myclass/homework_2026/Homework-202607/doubs_river.shp")
+doubs_pts <- st_read("D:/Myclass/homework_2026/Homework-202607/sample_points.shp")
+doubs_dem <- terra::rast("D:/Myclass/homework_2026/Homework-202607/doubs_dem.tif")
+```
+
+```{r set-crs, message=FALSE, warning=FALSE}
+# 统一坐标系
+# DEM 是 SpatRaster 对象，使用 terra::crs() 设置 CRS
+terra::crs(doubs_dem) <- "EPSG:4326"
+
+# 河流和样点是 sf 对象，使用 st_crs() 设置 CRS
+st_crs(doubs_river) <- 4326
+st_crs(doubs_pts) <- 4326
+```
+
+```{r dem-to-dataframe, message=FALSE, warning=FALSE}
+# 将 DEM 转换为数据框，用于 geom_raster() 绘图
+dem_df <- as.data.frame(doubs_dem, xy = TRUE, na.rm = TRUE)
+
+# 将 DEM 数值列统一命名为 elevation
+names(dem_df)[3] <- "elevation"
+```
+
+```{r plot-dem-river-points, message=FALSE, warning=FALSE}
+# 绘制 DEM、Doubs 河流和样点
+p <- ggplot() +
+  geom_raster(
+    data = dem_df,
+    aes(x = x, y = y, fill = elevation)
+  ) +
+  geom_sf(
+    data = doubs_pts,
+    color = "red",
+    size = 2
+  ) +
+  geom_sf(
+    data = doubs_river,
+    color = "yellow",
+    linewidth = 0.8
+  ) +
+  scale_fill_viridis_c(name = "Elevation") +
+  theme_minimal() +
+  labs(
+    title = "Doubs River, Sampling Points and DEM",
+    x = "Longitude",
+    y = "Latitude"
+  )
+
+# 显示图像
+p
+```
+
+```{r save-map, message=FALSE, warning=FALSE}
+# 保存图像
+ggsave(
+  filename = "D:/Myclass/homework_2026/Homework-202607/doubs_dem_map.png",
+  plot = p,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+```
+
+
+
+# 3.为确定空间样点的属性值是否存在空间自相关，用邻居的值（空间滞后，spatial lag）去对比对自身值，请回答如下问题：
+##3.1下图展示中心样点（蓝色）的Rook邻近（黄色）和Queen邻近（黄色），请分别给出蓝色样点的两种空间邻近的空间权重。
+
+##3.2常用Moran‘s scatter plot（MSL）和Lagged mean plot（LMP）两种图将空间滞后比对自身值，MSL和LMP图中的横坐标和纵坐标分别是什么？两图中都有一直线，此直线分别表达的意思是什么？
+
+# 4.若样点属性值存在空间自相关，可以通过创建预测各网格，并计算各网格到样点的缓冲距离（buffer distance）作为机器学习模型的输入特征，请解释什么是缓冲距离。
+
+在空间预测的场景中，“缓冲距离”（buffer distance）通常指从每一个待预测的网格点（或未知位置）出发，到周围已知样点的最短直线距离，或者到多个样点的某种距离组合（如最小距离、平均距离、加权距离等）。它用于量化网格点与已知样点之间的空间邻近程度，从而将空间自相关信息（即“邻近点属性相似”）作为特征引入机器学习模型。
