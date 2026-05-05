@@ -1,0 +1,128 @@
+---
+title: "Homework-202608"
+author: "Tingting Fei"
+date: "2026-05-05"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+问题：
+在doubs河流鱼群研究中，请筛选VOLPla站点有关CHE鱼类生物量和密度的记录，见表3。其中，第1列为序号，第2列为时间戳（stamp），第3列为生物量（Biomass）。
+
+```{r}
+library(tidyverse)
+library(randomForest)
+```
+
+```{r read-data}
+# 读取数据：文件为空格/制表符分隔，第一行为字段名
+raw_data <- read.table(
+  "D:/Myclass/homework_2026/Homework-202608/DOUBS_fishBiomassData.txt",
+  header = TRUE,
+  stringsAsFactors = FALSE
+)
+
+# 筛选 VOLPla 站点、CHE 鱼类，并按年份整理
+mydata <- raw_data |>
+  filter(STATION == "VOLPla", SP == "CHE") |>
+  group_by(YEAR) |>
+  summarise(
+    DATE = first(DATE),
+    BIOMASS = mean(BIOMASS, na.rm = TRUE),
+    DENSITY = mean(DENSITY, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  arrange(YEAR)
+
+mydata
+```
+
+由于原始数据中存在缺失年份，且 2010 年存在重复记录，因此先按年份求平均值，再补全 1994—2020 年的年度序列。缺失年份使用线性插值补齐，以保证时间序列对象具有连续年度间隔。
+
+```{r complete-series}
+# 补全 1994—2020 年序列
+mydata_full <- tibble(YEAR = 1994:2020) |>
+  left_join(mydata, by = "YEAR") |>
+  mutate(
+    BIOMASS = approx(
+      x = YEAR[!is.na(BIOMASS)],
+      y = BIOMASS[!is.na(BIOMASS)],
+      xout = YEAR,
+      rule = 2
+    )$y
+  )
+
+mydata_full
+```
+
+## 2. 时间序列建模与随机森林预测
+
+```{r random-forest-ts}
+# 构建 CHE 个体生物量的年度时间序列对象
+ts_che <- ts(mydata_full$BIOMASS, start = 1994, frequency = 1)
+
+# 划分训练集：使用 1994—2018 年数据训练，预测 2019—2020 年
+ts_train <- window(ts_che, end = 2018)
+
+# 对训练序列进行 log 转换和一阶差分，使序列更接近平稳
+ts_train_trans <- ts_train |> log() |> diff()
+
+# 用过去 2 年的变化预测下一年变化
+lag_order <- 2
+horizon <- 2
+
+# 构建滞后矩阵：第 1 列为当前值，后 2 列为滞后特征
+ts_train_mbd <- embed(ts_train_trans, lag_order + 1)
+Y_train <- ts_train_mbd[, 1]
+X_train <- ts_train_mbd[, -1]
+
+# 测试集：2019—2020 年真实值
+y_test <- window(ts_che, start = 2019, end = 2020)
+
+# 以训练集最后一行滞后特征作为初始预测输入
+x_test <- ts_train_mbd[nrow(ts_train_mbd), 1:lag_order]
+
+# 递归预测 log 差分值
+pred_diff <- numeric(horizon)
+
+for (i in 1:horizon) {
+  set.seed(1)
+  fit_rf <- randomForest(x = X_train, y = Y_train)
+  pred_diff[i] <- predict(fit_rf, t(as.matrix(x_test)))
+  
+  # 将本次预测结果加入滞后特征，用于下一步预测
+  x_test <- c(pred_diff[i], x_test[1:(lag_order - 1)])
+  Y_train <- c(Y_train[-1], pred_diff[i])
+  X_train <- rbind(X_train[-1, ], x_test)
+}
+
+pred_diff
+```
+
+上述 `pred_diff` 是对数差分尺度下的预测值。为了与原始生物量进行比较，需要将其还原到原始生物量尺度。
+
+```{r inverse-transform}
+# 将 log 差分预测值还原为生物量预测值
+last_log_value <- log(window(ts_che, end = 2018)[length(window(ts_che, end = 2018))])
+pred_log <- last_log_value + cumsum(pred_diff)
+pred_biomass <- exp(pred_log)
+
+result <- tibble(
+  YEAR = 2019:2020,
+  observed_BIOMASS = as.numeric(y_test),
+  predicted_BIOMASS = as.numeric(pred_biomass)
+)
+
+result
+```
+
+## 3. 基本原理说明
+
+该方法首先将 CHE 鱼类生物量整理为年度时间序列，并通过对数转换和一阶差分减少尺度差异和趋势影响。随后，利用 `embed()` 构建滞后特征矩阵，即用前两期的生物量变化作为自变量，预测下一期的生物量变化。随机森林模型不要求线性关系，能够从滞后特征中学习非线性变化模式。
+
+预测过程采用递归预测方式：先用训练集最后两期的滞后特征预测 2019 年，再将 2019 年的预测值作为新的滞后信息，继续预测 2020 年。因此，该方法适用于多步预测，但后一步预测会受到前一步预测误差的影响。
+
+
